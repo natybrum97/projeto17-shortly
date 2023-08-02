@@ -13,17 +13,19 @@ export async function postCadastro (req, res) {
 
 
     try {
-       // const usuario = await db.collection("usuariosCadastrados").findOne({ email: sanitizedEmail });
-      //  if (usuario) return res.status(409).send("Esse usuário já existe!");
 
-     //   const hash = bcrypt.hashSync(sanitizedPassword, 10);
+      const usuario = await db.query('SELECT * FROM cadastro WHERE email = $1;', [sanitizedEmail]);
+      
+        if (usuario.rows.length > 0) return res.status(409).send("Esse usuário já existe!");
 
-      //  await db.collection("usuariosCadastrados").insertOne({ name: sanitizedName, email: sanitizedEmail, password: hash });
+        const hash = bcrypt.hashSync(sanitizedPassword, 10);
 
-      //  res.sendStatus(201);
+        await db.query('INSERT INTO cadastro (name, email, password) VALUES ($1, $2, $3)',[sanitizedName, sanitizedEmail, hash]);
+
+        res.sendStatus(201);
 
     } catch (err) {
-       // res.status(500).send(err.message);
+        res.status(500).send(err.message);
     }
 
 }
@@ -38,19 +40,20 @@ export async function postLogin (req, res) {
 
     try {
 
-     //   const usuario = await db.collection("usuariosCadastrados").findOne({ email: sanitizedEmail });
-      //  if (!usuario) return res.status(404).send("Usuário não cadastrado");
+      const usuario = await db.query('SELECT * FROM cadastro WHERE email = $1;', [sanitizedEmail]);
+      
+        if (usuario.rows.length === 0) return res.status(401).send("Usuário não cadastrado!");
 
-       // const senhaEstaCorreta = bcrypt.compareSync(sanitizedPassword, usuario.password);
-     //   if (!senhaEstaCorreta) return res.status(401).send("Senha incorreta");
+       const senhaEstaCorreta = bcrypt.compareSync(sanitizedPassword, usuario.rows[0].password);
+        if (!senhaEstaCorreta) return res.status(401).send("Senha incorreta!");
 
-      //  const token = uuid();
-      //  await db.collection("login").insertOne({ token, idUsuario: usuario._id });
+      const token = uuid();
 
+      await db.query('INSERT INTO login (token, "idUser") VALUES ($1, $2)', [token, usuario.rows[0].id]);
 
-      //  return res.status(200).send({token: token, nome: usuario.name, _id: usuario._id});
+      return res.status(200).send({token: token, nome: usuario.rows[0].name, id: usuario.rows[0].id});
 
     } catch (err) {
-      //  res.status(500).send(err.message);
+      res.status(500).send(err.message);
     }
 }
