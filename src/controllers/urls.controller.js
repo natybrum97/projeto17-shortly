@@ -119,7 +119,7 @@ export async function selecionaTudoDoUser(req, res) {
         SELECT
           cadastro.id AS user_id,
           cadastro.name AS name,
-          SUM(url."visitCount") AS visitCount,
+          COALESCE(SUM(url."visitCount"), 0) AS visitCount,
           JSON_AGG(
             JSON_BUILD_OBJECT(
               'id', url.id,
@@ -134,11 +134,15 @@ export async function selecionaTudoDoUser(req, res) {
         GROUP BY cadastro.id, cadastro.name;`, [sessao.rows[0].idUser]);
   
       const userData = getUrl.rows[0];
+
+      console.log(userData.visitcount)
+
+      let visit = Number(userData.visitcount);
   
       const responseBody = {
         id: userData.user_id,
         name: userData.name,
-        visitCount: parseInt(userData.visitCount), // Certifique-se de converter para número, se necessário
+        visitCount: visit, // Certifique-se de converter para número, se necessário
         shortenedUrls: userData.shortenedurls // Verifique se a propriedade foi retornada corretamente
       };
   
