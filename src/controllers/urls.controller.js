@@ -164,7 +164,7 @@ export async function selecionaTudoDoUser(req, res) {
     FROM cadastro
     LEFT JOIN url ON cadastro.id = url.user_id
     GROUP BY cadastro.id, cadastro.name
-    ORDER BY visitCount
+    ORDER BY visitCount DESC
     LIMIT 10;`);
 
     const formattedData = getUrl.rows.map((userData) => ({
