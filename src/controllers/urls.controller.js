@@ -102,3 +102,62 @@ export async function deletaUrlPorId(req, res) {
         res.status(500).send(err.message);
     }
 }
+
+export async function selecionaTudoDoUser(req, res) {
+    const { sessao } = res.locals;
+  
+    try {
+      const getUrl = await db.query(`
+        SELECT
+          cadastro.id AS user_id,
+          cadastro.name AS name,
+          SUM(url."visitCount") AS visitCount,
+          JSON_AGG(
+            JSON_BUILD_OBJECT(
+              'id', url.id,
+              'shortUrl', url.short_url,
+              'url', url.full_url,
+              'visitCount', url."visitCount"
+            )
+          ) AS shortenedUrls
+        FROM cadastro
+        JOIN url ON cadastro.id = url.user_id
+        WHERE cadastro.id = $1
+        GROUP BY cadastro.id, cadastro.name;`, [sessao.rows[0].idUser]);
+  
+      const userData = getUrl.rows[0];
+  
+      const responseBody = {
+        id: userData.user_id,
+        name: userData.name,
+        visitCount: parseInt(userData.visitCount), // Certifique-se de converter para número, se necessário
+        shortenedUrls: userData.shortenedurls // Verifique se a propriedade foi retornada corretamente
+      };
+  
+      return res.status(200).send(responseBody);
+    } catch (err) {
+      return res.status(500).send(err.message);
+    }
+  }
+
+  export async function selecionaRanking (req, res) {
+  
+    try {
+      const getUrl = await db.query(`
+      SELECT
+      cadastro.id AS id,
+      cadastro.name AS name,
+      COUNT(url.short_url) AS linksCount,
+      COALESCE(SUM(url."visitCount"), 0) AS visitCount
+    FROM cadastro
+    LEFT JOIN url ON cadastro.id = url.user_id
+    GROUP BY cadastro.id, cadastro.name
+    ORDER BY visitCount
+    LIMIT 10;`);
+  
+  
+      return res.status(200).send(getUrl.rows);
+    } catch (err) {
+      return res.status(500).send(err.message);
+    }
+  }
