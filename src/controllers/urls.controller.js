@@ -166,9 +166,18 @@ export async function selecionaTudoDoUser(req, res) {
     GROUP BY cadastro.id, cadastro.name
     ORDER BY visitCount
     LIMIT 10;`);
+
+    const formattedData = getUrl.rows.map((userData) => ({
+      id: userData.id,
+      name: userData.name,
+      linksCount: userData.linkscount, // "linksCount" em letra minúscula conforme a consulta SQL
+      visitCount: userData.visitcount, // "visitCount" em letra minúscula conforme a consulta SQL
+    }));
+
+    return res.status(200).send(formattedData);
   
   
-      return res.status(200).send(getUrl.rows);
+      
     } catch (err) {
       return res.status(500).send(err.message);
     }
