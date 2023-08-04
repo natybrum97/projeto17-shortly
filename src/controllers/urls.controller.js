@@ -35,7 +35,15 @@ export async function urlPorID(req, res) {
 
         if (getUrl.rows.length === 0) return res.status(404).send({ message: "Url não encontrada pelo id", id });
 
-        return res.status(200).send(getUrl.rows[0]);
+        const remodelagem = getUrl.rows[0];
+
+        const responseBody = {
+          "id": remodelagem.id,
+          "shortUrl": remodelagem.short_url,
+          "url": remodelagem.full_url
+        }
+
+        return res.status(200).send(responseBody);
 
     } catch (err) {
 
