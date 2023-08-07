@@ -1,6 +1,6 @@
 import { stripHtml } from "string-strip-html";
-import { db } from "../database/database.connection.js";
 import { nanoid } from "nanoid";
+import { atualizaShort, criaeSalvaLinkEncurtado, deletaResultadoDaPesquisa, pegaTudoDoRanking, pegaUrlPorID, pegaUrlPorShort, procuraOqueVaiDeletar, selecionaTodasAsUrlsDoUser } from "../repository/urls.repository.js";
 
 export async function postEncurtador(req, res) {
 
@@ -15,7 +15,7 @@ export async function postEncurtador(req, res) {
 
     try {
 
-        const result = await db.query('INSERT INTO url ("short_url", "full_url" , "visitCount", "user_id") VALUES ($1, $2, $3, $4) RETURNING id', [shortUrl, sanitizedUrl, 0, sessao.rows[0].idUser]);
+        const result = await criaeSalvaLinkEncurtado(shortUrl, sanitizedUrl, sessao);
 
         res.status(201).send({ id: result.rows[0].id, shortUrl: shortUrl });
 
@@ -31,7 +31,7 @@ export async function urlPorID(req, res) {
 
     try {
 
-        const getUrl = await db.query('SELECT * FROM url WHERE id = $1;', [id]);
+        const getUrl = await pegaUrlPorID(id);
 
         if (getUrl.rows.length === 0) return res.status(404).send({ message: "Url não encontrada pelo id", id });
 
@@ -58,7 +58,7 @@ export async function getPorShortUrl(req, res) {
 
     try {
 
-        const getUrl = await db.query('SELECT * FROM url WHERE "short_url" = $1;', [shortUrl]);
+        const getUrl = await pegaUrlPorShort (shortUrl);
 
         console.log(getUrl.rows)
 
@@ -70,7 +70,7 @@ export async function getPorShortUrl(req, res) {
 
         const updatedVisits = visitCount + 1;
 
-        await db.query('UPDATE url SET "visitCount" = $1 WHERE short_url = $2;', [updatedVisits, shortUrl]);
+        await atualizaShort (updatedVisits, shortUrl);
 
         // Redireciona o usuário para a URL completa
         return res.redirect(full_url);
@@ -90,7 +90,7 @@ export async function deletaUrlPorId(req, res) {
 
     try {
 
-        const result = await db.query('SELECT * FROM url WHERE id = $1;', [id]);
+        const result = await procuraOqueVaiDeletar (id);
 
         if (result.rowCount === 0) return res.status(404).send("Essa URL não consta no sistema!");
 
@@ -100,7 +100,7 @@ export async function deletaUrlPorId(req, res) {
 
         } else {
 
-            await db.query('DELETE FROM url WHERE id = $1;', [id]);
+            await deletaResultadoDaPesquisa (id);
 
         }
 
@@ -115,23 +115,7 @@ export async function selecionaTudoDoUser(req, res) {
     const { sessao } = res.locals;
   
     try {
-      const getUrl = await db.query(`
-        SELECT
-          cadastro.id AS user_id,
-          cadastro.name AS name,
-          COALESCE(SUM(url."visitCount"), 0) AS visitCount,
-          JSON_AGG(
-            JSON_BUILD_OBJECT(
-              'id', url.id,
-              'shortUrl', url.short_url,
-              'url', url.full_url,
-              'visitCount', url."visitCount"
-            )
-          ) AS shortenedUrls
-        FROM cadastro
-        JOIN url ON cadastro.id = url.user_id
-        WHERE cadastro.id = $1
-        GROUP BY cadastro.id, cadastro.name;`, [sessao.rows[0].idUser]);
+      const getUrl = await selecionaTodasAsUrlsDoUser(sessao);
   
       const userData = getUrl.rows[0];
 
@@ -155,17 +139,7 @@ export async function selecionaTudoDoUser(req, res) {
   export async function selecionaRanking (req, res) {
   
     try {
-      const getUrl = await db.query(`
-      SELECT
-      cadastro.id AS id,
-      cadastro.name AS name,
-      COUNT(url.short_url) AS linksCount,
-      COALESCE(SUM(url."visitCount"), 0) AS visitCount
-    FROM cadastro
-    LEFT JOIN url ON cadastro.id = url.user_id
-    GROUP BY cadastro.id, cadastro.name
-    ORDER BY visitCount DESC
-    LIMIT 10;`);
+      const getUrl = await pegaTudoDoRanking();
 
     const formattedData = getUrl.rows.map((userData) => ({
       id: userData.id,
